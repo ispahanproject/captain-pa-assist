@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PA Assist">
+<meta name="theme-color" content="#0A0E13">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Captain PA Assist</title>
+<style>
+/* ---------- 配色(明るい画面) ---------- */
+:root {
+  color-scheme: light;
+  --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #F2F5F9; --surface-3: #E7ECF2;
+  --line: #E0E6ED; --line-strong: #C9D2DD;
+  --text: #0F1722; --text-2: #465264; --muted: #6E7A8A;
+  --accent: #1D6FE0; --accent-ink: #FFFFFF; --accent-soft: rgba(29, 111, 224, .10); --accent-line: rgba(29, 111, 224, .40);
+  --danger: #D63B3B; --danger-ink: #FFFFFF; --danger-soft: rgba(214, 59, 59, .10);
+  --amber-bg: #FFEFC7; --amber-ink: #7A5200; --violet: #7C4DDB;
+  --shadow: 0 1px 2px rgba(15, 23, 34, .04), 0 8px 24px rgba(15, 23, 34, .06);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23465264' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --radius: 16px;
+  --pa-size: 20px;
+}
+/* ---------- 配色(暗い画面・コクピットの夜間向け) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A0E13; --surface: #11171F; --surface-2: #171F2A; --surface-3: #1F2936;
+  --line: #222C3A; --line-strong: #33425A;
+  --text: #E4E9F0; --text-2: #A9B5C6; --muted: #7C899C;
+  --accent: #5AA9FF; --accent-ink: #04111F; --accent-soft: rgba(90, 169, 255, .14); --accent-line: rgba(90, 169, 255, .50);
+  --danger: #FF6B6B; --danger-ink: #1C0505; --danger-soft: rgba(255, 107, 107, .14);
+  --amber-bg: rgba(242, 182, 76, .20); --amber-ink: #FFD07A; --violet: #B794FF;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 10px 30px rgba(0, 0, 0, .35);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A9B5C6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* ---------- 基本 ---------- */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { height: 100%; }
+body {
+  margin: 0; min-height: 100%; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ic { display: inline-flex; width: 20px; height: 20px; flex: none; }
+.ic svg { width: 100%; height: 100%; }
+.spacer { flex: 1; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+/* ---------- ヘッダー ---------- */
+.appbar {
+  position: sticky; top: 0; z-index: 10; flex: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  background: var(--bg); background: color-mix(in srgb, var(--bg) 85%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: .01em; white-space: nowrap; }
+.brand .logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); }
+.brand .logo .ic { width: 20px; height: 20px; }
+@media (max-width: 560px) { .brand .name { display: none; } }
+.route {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text-2); font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.icon-btn {
+  display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text-2);
+}
+
+/* ---------- レイアウト ---------- */
+main { display: grid; grid-template-columns: minmax(380px, 480px) minmax(0, 1fr); }
+.controls { padding: 16px 16px 80px; border-right: 1px solid var(--line); }
+.output { padding: 0 20px 80px; }
+@media (min-width: 901px) {
+  body { height: 100vh; height: 100dvh; }
+  main { flex: 1; min-height: 0; }
+  .controls, .output { overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  .controls { border-right: 0; padding-bottom: 24px; }
+  .output { padding: 0 16px 110px; border-top: 1px solid var(--line); }
+}
+
+/* ---------- フライト情報・設定 ---------- */
+details.settings > summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 16px;
+  cursor: pointer; font-weight: 700;
+}
+details.settings > summary::-webkit-details-marker { display: none; }
+details.settings > summary .sub { flex: 1; min-width: 0; text-align: right; color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+details.settings > summary .chev { color: var(--muted); transition: transform .2s; }
+details.settings[open] > summary .chev { transform: rotate(180deg); }
+details.settings .body { display: grid; gap: 16px; padding: 16px; border-top: 1px solid var(--line); }
+
+/* ---------- 手順の見出し ---------- */
+.step { display: flex; align-items: center; gap: 10px; margin: 24px 2px 10px; font-size: 14px; font-weight: 800; color: var(--text); }
+.step .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+.step small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--muted); }
+.step > span:not(.n), .step .fold-btn { flex: none; white-space: nowrap; }
+
+/* ---------- ① タイミング ---------- */
+.timing { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 6px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--line); }
+.timing button {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 68px; padding: 6px 4px; border: 0; border-radius: 13px; background: transparent;
+  color: var(--text-2); font-size: 15px; font-weight: 800; transition: background .15s, color .15s;
+}
+.timing button .ic { width: 24px; height: 24px; }
+.timing button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 18px var(--accent-soft); }
+.timing button.danger { color: var(--danger); }
+.timing button.danger[aria-pressed="true"] { background: var(--danger); color: var(--danger-ink); box-shadow: 0 6px 18px var(--danger-soft); }
+.timing .cnt { position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 12px; line-height: 20px; font-weight: 800; }
+.timing button.danger .cnt { background: var(--danger); color: var(--danger-ink); }
+.timing button[aria-pressed="true"] .cnt { background: var(--accent-ink); color: var(--accent); }
+.timing button.danger[aria-pressed="true"] .cnt { background: var(--danger-ink); color: var(--danger); }
+
+/* ---------- よく使う組み合わせ ---------- */
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.preset {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 16px;
+  border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+  color: var(--text); font-size: 15px; font-weight: 700;
+}
+.preset .tm { padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
+.preset.danger .tm { background: var(--danger-soft); color: var(--danger); }
+.preset[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.preset .ic { width: 16px; height: 16px; color: var(--danger); }
+.preset.sub { border-style: dashed; background: transparent; box-shadow: none; color: var(--text-2); font-weight: 600; }
+.preset.sub[aria-pressed="true"] { border-style: solid; border-color: var(--accent); color: var(--accent); }
+
+/* ---------- 状況の検索 ---------- */
+.search { position: relative; margin-bottom: 4px; }
+.search .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search input[type=search] { padding-left: 44px; }
+.tile .tt { display: block; }
+.tile .tm { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.tile small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+
+/* ---------- 一覧の折りたたみ ---------- */
+.step .fold-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-height: 40px; padding: 0 14px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 700;
+}
+.step .fold-btn .ic { width: 16px; height: 16px; transition: transform .2s; }
+.step .fold-btn[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.step .fold-btn:disabled { opacity: .4; cursor: default; }
+button.grp { width: calc(100% - 4px); min-height: 40px; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12px; font-weight: 800; color: var(--muted); text-align: left; }
+button.grp .ic { width: 16px; height: 16px; transition: transform .2s; }
+button.grp[aria-expanded="false"] .ic { transform: rotate(-90deg); }
+.grp .gcnt { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; letter-spacing: 0; }
+.sel-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 56px; padding: 8px 10px; border-radius: 14px; border: 1.5px dashed var(--line-strong); cursor: pointer; }
+.sel-summary .chipsel { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: 14px; font-weight: 700; }
+.sel-summary .chipsel .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 800; }
+.sel-summary .hint { margin: 0 4px; }
+
+/* ---------- ② 状況 ---------- */
+.grp { display: flex; align-items: center; gap: 10px; margin: 18px 2px 8px; font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
+.grp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.tile {
+  display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 10px 12px;
+  border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+  color: var(--text); text-align: left; font-size: 15px; font-weight: 700; line-height: 1.3;
+  transition: background .15s, border-color .15s, transform .08s;
+}
+.tile:active { transform: scale(.98); }
+.tile .mark {
+  display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--line-strong); font-size: 13px; font-weight: 800;
+}
+.tile[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.tile[aria-pressed="true"] .mark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tile.danger[aria-pressed="true"] { background: var(--danger-soft); border-color: var(--danger); }
+.tile.danger[aria-pressed="true"] .mark { background: var(--danger); border-color: var(--danger); color: var(--danger-ink); }
+
+/* ---------- ③ 入力カード ---------- */
+.fcard { margin-top: 12px; overflow: hidden; }
+.fcard > .hd { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); }
+.fcard > .hd .num { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 800; }
+.fcard.danger > .hd .num { background: var(--danger); color: var(--danger-ink); }
+.fcard > .hd .ttl { flex: 1; min-width: 0; font-weight: 800; line-height: 1.3; }
+.fcard > .hd .ttl small { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.fcard > .hd .icon-btn { width: 40px; height: 40px; border-radius: 11px; }
+.fcard > .bd { display: grid; gap: 18px; padding: 16px; }
+
+/* ---------- 入力部品 ---------- */
+.field > .lbl { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+input[type=text], input[type=time], input[type=search], select {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; min-height: 50px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--line-strong); background: var(--surface-2); font-size: 16px;
+  transition: border-color .15s, box-shadow .15s;
+}
+input::placeholder { color: var(--muted); }
+input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+select { -webkit-appearance: none; appearance: none; padding-right: 44px; background-image: var(--chev); background-repeat: no-repeat; background-position: right 12px center; background-size: 20px; text-overflow: ellipsis; }
+.affix { position: relative; }
+.affix input { padding-right: 64px; }
+.affix .unit { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; font-weight: 600; pointer-events: none; }
+.affix.pre input { padding-left: 50px; padding-right: 14px; letter-spacing: .04em; }
+.affix .unit.pre { left: 16px; right: auto; color: var(--text-2); font-weight: 800; }
+.fn-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; line-height: 1.5; }
+.fn-hint .ic { width: 16px; height: 16px; color: var(--accent); }
+.fn-hint .tbtn { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.warn { color: var(--danger); font-weight: 700; }
+details.notes .ctt .tt-info { margin: 0 0 10px; padding-left: 0; }
+details.notes .ctt .tt-info::before { display: none; }
+textarea {
+  width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-2);
+  font-size: 15px; line-height: 1.5; resize: vertical; -webkit-appearance: none; appearance: none;
+}
+textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.route-list { display: grid; gap: 4px; margin: 0 0 12px; padding: 0; list-style: none; }
+.route-list li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 2px 4px 2px 12px; border-radius: 10px; background: var(--surface); }
+.route-list li.none { padding: 10px 12px; }
+.route-list .fn { flex: none; min-width: 62px; font-weight: 800; color: var(--text); letter-spacing: .03em; }
+.route-list .rt { flex: 1; min-width: 0; color: var(--text-2); }
+.route-list .icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+.lbl-s { margin: 4px 0 6px; font-size: 12px; font-weight: 700; color: var(--text-2); }
+.route-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.timebox { display: flex; gap: 8px; }
+.timebox input { flex: 1; }
+.timebox .icon-btn { width: 50px; height: 50px; }
+.hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+/* 区切りボタン(1つを選ぶ) */
+.seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg button {
+  flex: 1 1 auto; min-height: 46px; padding: 8px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text-2); font-size: 14px; font-weight: 700; line-height: 1.25;
+  transition: background .15s, color .15s;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); }
+/* ピル(複数選べる) */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 18px;
+  border-radius: 999px; border: 1.5px solid var(--line-strong); background: var(--surface-2);
+  color: var(--text-2); font-size: 14px; font-weight: 700;
+}
+.pill .ic { display: none; width: 16px; height: 16px; }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pill[aria-pressed="true"] .ic { display: inline-flex; }
+/* スイッチ(入れる / 入れない) */
+.switch-row {
+  display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 10px 14px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2);
+  cursor: pointer; font-size: 15px; font-weight: 600; line-height: 1.4;
+}
+.switch-row .txt { flex: 1; }
+.switch { -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 52px; height: 32px; margin: 0; border-radius: 999px; background: var(--line-strong); cursor: pointer; transition: background .2s; }
+.switch::before { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .2s; }
+.switch:checked { background: var(--accent); }
+.switch:checked::before { transform: translateX(20px); }
+/* ハンドブックの注意 */
+details.notes { border-radius: 12px; border: 1px dashed var(--line-strong); background: var(--surface-2); }
+details.notes > summary { list-style: none; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-2); }
+details.notes > summary::-webkit-details-marker { display: none; }
+details.notes > summary .ic { width: 18px; height: 18px; color: var(--accent); }
+details.notes .ctt { padding: 0 14px 12px; font-size: 13px; line-height: 1.6; color: var(--text-2); }
+details.notes .ctt p { position: relative; margin: 0 0 8px; padding-left: 14px; }
+details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: .65em; width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+
+/* ---------- アナウンス文 ---------- */
+.toolbar {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 16px 0 14px; background: linear-gradient(var(--bg) 82%, transparent);
+}
+@media (max-width: 900px) { .toolbar { top: calc(65px + env(safe-area-inset-top)); } }
+.tbtn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text-2); font-size: 14px; font-weight: 700; white-space: nowrap;
+}
+.tbtn .ic { width: 18px; height: 18px; }
+.tbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+#fixBtn[aria-pressed="true"] { border-color: var(--violet); color: var(--violet); }
+.tgroup { display: inline-flex; overflow: hidden; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.tgroup button { min-width: 50px; min-height: 44px; border: 0; background: transparent; color: var(--text-2); font-weight: 800; }
+.tgroup button + button { border-left: 1px solid var(--line); }
+.empty { display: grid; justify-items: center; gap: 12px; margin-top: 4px; padding: 72px 20px; border-radius: var(--radius); border: 1.5px dashed var(--line-strong); color: var(--muted); text-align: center; font-weight: 600; }
+.empty .ic { width: 44px; height: 44px; color: var(--accent); }
+.out { margin-bottom: 16px; overflow: hidden; }
+.out .head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); }
+.lang { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.out .meta { flex: 1; color: var(--muted); font-size: 13px; font-weight: 600; }
+.pa { padding: 18px 20px 22px; font-size: var(--pa-size); line-height: 1.85; letter-spacing: .02em; }
+.pa[lang=en] { line-height: 1.6; letter-spacing: 0; }
+.pa p { margin: 0 0 .75em; }
+.pa p:last-child { margin-bottom: 0; }
+.ph { padding: 0 .3em; border-radius: 6px; background: var(--amber-bg); color: var(--amber-ink); font-size: .9em; font-weight: 800; }
+.show-fix .fix { text-decoration: underline dotted var(--violet); text-decoration-thickness: 2px; text-underline-offset: .28em; cursor: help; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 4px 0; font-size: 12px; color: var(--muted); }
+.legend .ph { font-size: 12px; }
+.fixs { text-decoration: underline dotted var(--violet); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* ---------- 並べ替え ---------- */
+#orderBtn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.reorder { margin-bottom: 16px; overflow: hidden; }
+.reorder .head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); font-weight: 800; }
+.reorder .head .meta { flex: 1; color: var(--muted); font-size: 12px; font-weight: 600; }
+.reorder ol { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
+.reorder li { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 8px 6px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.reorder li.fixed { opacity: .55; }
+.reorder .tag { flex: none; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
+.reorder .txt { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.4; }
+.reorder .icon-btn:disabled { opacity: .3; cursor: default; }
+
+/* ---------- 自由作成 ---------- */
+.step { scroll-margin-top: 76px; }
+.lib-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.lib-head .tt { flex: 1; min-width: 0; font-size: 15px; font-weight: 800; line-height: 1.35; }
+.lib-sub { display: flex; align-items: center; gap: 8px; margin: 18px 2px 8px; font-size: 13px; font-weight: 800; color: var(--text-2); }
+.lib-head .tm, .lib-sub .tm { flex: none; display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); font-size: 11px; font-weight: 800; }
+.lib-head .tm { margin-right: 8px; vertical-align: 1px; }
+.phrases { display: grid; gap: 8px; }
+.phrase {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 14px 12px 12px;
+  border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+  color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, background .15s, transform .1s;
+}
+.phrase:active { transform: scale(.99); }
+.phrase .mark { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line-strong); color: var(--muted); }
+.phrase .mark .ic { width: 16px; height: 16px; }
+.phrase .body { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.phrase .top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.phrase .note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-size: 12px; font-weight: 700; }
+.phrase .tag { flex: none; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
+.phrase .ja { font-size: 15px; font-weight: 600; line-height: 1.6; }
+.phrase .en { font-size: 13px; line-height: 1.5; color: var(--muted); }
+.phrase[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.phrase[aria-pressed="true"] .mark { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.freelist { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
+.freelist li { display: flex; align-items: center; gap: 6px; min-height: 60px; padding: 6px 6px 6px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.freelist li.broken { border-style: dashed; }
+.freelist li.broken .ja { color: var(--danger); }
+.freelist .txt { flex: 1; min-width: 0; }
+.freelist .meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.freelist .meta .src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.freelist .tag { flex: none; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
+.freelist .ja { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.4; }
+.freelist .icon-btn { flex: none; width: 40px; height: 40px; border-radius: 11px; }
+.freelist .icon-btn:disabled { opacity: .3; cursor: default; }
+@media (max-width: 420px) { .timing button { font-size: 13px; } }
+
+/* ---------- 外資系のフレーズ集 ---------- */
+.appbar .tbtn .ic { width: 18px; height: 18px; }
+@media (max-width: 560px) { #phraseBtn .lbl { display: none; } }
+.pb-title { display: grid; gap: 2px; min-width: 0; font-size: 17px; font-weight: 800; }
+.pb-title small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--muted); }
+.pb-tools { display: grid; gap: 10px; padding: 12px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--line); background: var(--surface); }
+.pb-tools > * { width: 100%; max-width: 860px; margin: 0 auto; }
+.pb-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-cats .pill { min-height: 38px; padding: 0 12px; font-size: 13px; }
+.pb-cats .n { margin-left: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.pb-body { flex: 1; overflow-y: auto; padding: 4px clamp(16px, 4vw, 40px) calc(64px + env(safe-area-inset-bottom)); }
+.pb-sec { max-width: 860px; margin: 0 auto; scroll-margin-top: 8px; }
+.pb-sec h3 { margin: 22px 2px 10px; font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--muted); }
+.pb-item { display: grid; gap: 4px; margin-bottom: 8px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+.pb-item .en { font-size: 18px; font-weight: 600; line-height: 1.5; }
+.pb-item .ja { font-size: 14px; line-height: 1.6; color: var(--text-2); }
+.pb-item .note { justify-self: start; margin-top: 4px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
+.pb-none { max-width: 860px; margin: 24px auto; }
+
+/* ---------- 大きく表示 ---------- */
+.reader { position: fixed; inset: 0; z-index: 30; display: none; flex-direction: column; background: var(--bg); }
+.reader.open { display: flex; }
+.reader-head { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.reader-head .seg { flex: none; }
+.reader-head .seg button { min-width: 88px; }
+.reader-body { flex: 1; overflow-y: auto; padding: 28px clamp(16px, 6vw, 88px) 96px; font-size: calc(var(--pa-size) * 1.5); line-height: 1.85; }
+.reader-body p { margin: 0 0 .8em; }
+.reader-body hr { margin: 1.2em 0; border: 0; border-top: 1px solid var(--line); }
+
+/* ---------- 通知・移動ボタン ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40;
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 14px;
+  background: var(--text); color: var(--bg); font-size: 14px; font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); opacity: 0; transform: translate(-50%, 8px);
+  transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.fab { display: none; }
+@media (max-width: 900px) {
+  .fab {
+    position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 20;
+    display: inline-flex; align-items: center; gap: 8px; min-height: 54px; padding: 0 20px;
+    border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+    font-weight: 800; box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  }
+}
+@media (hover: hover) {
+  .tile:hover, .phrase:hover { border-color: var(--accent-line); }
+  .seg button:hover:not([aria-pressed="true"]) { background: var(--surface-3); }
+  .pill:hover, .tbtn:hover, .icon-btn:hover, .route:hover { border-color: var(--line-strong); color: var(--text); }
+}
+</style>
+</head>
+<body>
+<header class="appbar">
+  <div class="brand"><span class="logo"><span data-ic="air"></span></span><span class="name">Captain PA Assist</span></div>
+  <button class="route" id="summary" type="button" aria-label="フライト情報・設定を開く"></button>
+  <div class="spacer"></div>
+  <button class="tbtn" id="phraseBtn" type="button" aria-label="外資系のフレーズ集"><span data-ic="book"></span><span class="lbl">外資系フレーズ</span></button>
+  <button class="icon-btn" id="themeBtn" type="button" aria-label="画面の明るさを切り替え"></button>
+</header>
+
+<main>
+  <section class="controls" aria-label="入力">
+    <details class="settings panel" id="flightBox">
+      <summary><span data-ic="sliders"></span>フライト情報・設定<span class="sub" id="setSub"></span><span class="chev" data-ic="chev"></span></summary>
+      <div class="body" id="flightForm"></div>
+    </details>
+
+    <div class="step"><span class="n">★</span>よく使う組み合わせ<small>1タップでタイミングと状況を選べます</small></div>
+    <div class="presets" id="presets"></div>
+
+    <div class="step"><span class="n">1</span>タイミング<button class="fold-btn" id="allClear" type="button" aria-label="すべてのタイミングの選択をクリア"><span data-ic="x"></span>All clear</button></div>
+    <div class="timing" id="tabs"></div>
+
+    <div class="step"><span class="n">2</span><span id="step2">状況</span><small id="step2Sub">複数選べます</small><button class="fold-btn" id="listToggle" type="button"></button></div>
+    <div class="search"><span data-ic="search"></span><input type="search" id="sitSearch" placeholder="状況を探す(例:雷、フロー、ダイバート)" autocomplete="off" enterkeyhint="search"></div>
+    <div id="sits"></div>
+
+    <div id="forms"></div>
+  </section>
+
+  <section class="output" id="outputPane" aria-label="アナウンス文">
+    <div class="toolbar">
+      <div class="tgroup"><button id="fontDown" type="button" aria-label="文字を小さく">A−</button><button id="fontUp" type="button" aria-label="文字を大きく">A＋</button></div>
+      <button class="tbtn" id="fixBtn" type="button"><span class="fixs">修正箇所</span></button>
+      <button class="tbtn" id="orderBtn" type="button"><span data-ic="updown"></span>並べ替え</button>
+      <div class="spacer"></div>
+      <button class="tbtn" id="clearSel" type="button"><span data-ic="x"></span>クリア</button>
+      <button class="tbtn primary" id="readBtn" type="button"><span data-ic="expand"></span>大きく表示</button>
+    </div>
+    <div class="empty" id="empty"><span data-ic="megaphone"></span><span id="emptyMsg">状況を選ぶと、ここにアナウンス文ができます</span></div>
+    <div id="outCards">
+      <section class="reorder panel" id="orderPanel" hidden></section>
+      <article class="out panel">
+        <div class="head"><span class="lang">日本語</span><span class="meta" id="jaMeta"></span><button class="tbtn" type="button" data-copy="ja"><span data-ic="copy"></span>コピー</button></div>
+        <div class="pa" id="outJa" lang="ja"></div>
+      </article>
+      <article class="out panel">
+        <div class="head"><span class="lang">ENGLISH</span><span class="meta" id="enMeta"></span><button class="tbtn" type="button" data-copy="en"><span data-ic="copy"></span>Copy</button></div>
+        <div class="pa" id="outEn" lang="en"></div>
+      </article>
+      <p class="legend"><span><span class="ph">〇〇</span> 未入力・読むときに補う</span><span><span class="fixs">点線</span> ハンドブックから直した・足した箇所(タップで原文)</span></p>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" type="button" hidden><span data-ic="down"></span>アナウンス文へ</button>
+
+<div class="reader" id="reader">
+  <div class="reader-head">
+    <div class="seg" role="group" aria-label="表示する言語">
+      <button id="rJa" type="button">日本語</button><button id="rEn" type="button">English</button><button id="rBoth" type="button">両方</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="rClose" type="button" aria-label="閉じる"><span data-ic="x"></span></button>
+  </div>
+  <div class="reader-body" id="readerBody"></div>
+</div>
+<div class="reader" id="phrasebook" role="dialog" aria-modal="true" aria-labelledby="pbTitle">
+  <div class="reader-head">
+    <div class="pb-title"><span id="pbTitle">外資系のフレーズ集</span><small>参考:外国の航空会社の機長がよく使う英語の言い方(ハンドブックの文例ではありません)</small></div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="pbClose" type="button" aria-label="閉じる"><span data-ic="x"></span></button>
+  </div>
+  <div class="pb-tools">
+    <div class="search"><span data-ic="search"></span><input type="search" id="pbSearch" placeholder="探す(例:descent、揺れ、thank)" autocomplete="off" enterkeyhint="search"></div>
+    <div class="pb-cats" id="pbCats"></div>
+  </div>
+  <div class="pb-body" id="pbBody"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>

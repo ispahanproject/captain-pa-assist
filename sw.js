@@ -1,6 +1,6 @@
-// オフライン用のキャッシュ(Web で公開したとき用)。v1.1.0-1d49d20f85b3 は build.sh が index.html などのハッシュに置き換えるので、
+// オフライン用のキャッシュ(Web で公開したとき用)。v1.1.0-21f58500bf6d は build.sh が index.html などのハッシュに置き換えるので、
 // 作り直すたびに新しいキャッシュになる。画面はキャッシュから先に出し、裏で新しい版を取りに行く(次に開いたときに反映)
-const VERSION = 'v1.1.0-1d49d20f85b3';
+const VERSION = 'v1.1.0-21f58500bf6d';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

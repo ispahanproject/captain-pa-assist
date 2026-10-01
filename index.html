@@ -2121,7 +2121,7 @@ SITS.push({
     return {
       ja: [J('本日は日本航空をご利用いただきまして、誠にありがとうございました。', a === 'late' && FX('本日は到着が遅れ、大変ご迷惑をおかけいたしました。'), a === 'early' && 'また本日も定時運航へご協力いただき感謝いたします。', wj && `${wj}上空でのご挨拶を控えさせていただきました。`, 'またのご搭乗を心よりお待ち申し上げております。', 'この先もどうぞお気をつけて目的地までお出掛けください。')],
       // 英語の結びは機長の文(ハンドブックの "Have a nice trip to your destination." と意味が重なるため置き換え)
-      en: [E('On behalf of the entire crew, thank you for flying with Japan Airlines.', a === 'late' && FX('We apologize for the late arrival today.'), a === 'early' && FX('We also appreciate your cooperation in helping us operate on time today.'), we && FX(we), 'We look forward to welcoming you on board again. Also, we wish you a safe and pleasant journey ahead. Thank you.')],
+      en: [E('On behalf of the entire crew, thank you for flying with Japan Airlines.', a === 'late' && FX('We apologize for the late arrival today.'), a === 'early' && FX('We also appreciate your help in keeping us on schedule today.'), we && FX(we), 'We look forward to welcoming you on board again. Also, we wish you a safe and pleasant journey ahead. Thank you.')],
     };
   },
 });

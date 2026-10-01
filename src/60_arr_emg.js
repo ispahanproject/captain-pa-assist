@@ -135,16 +135,18 @@ SITS.push({
   defaults: { why: '' },
   fields: [
     { k: 'why', t: 'seg', label: '上空で挨拶しなかった理由(任意)', opts: [['', '入れない'], ['short', '飛行時間が短い'], ['ife', '機内エンターテイメント']] },
-    { k: 'late', t: 'chk', label: '到着遅れのお詫びを入れる(追加)' },
+    // 遅れのお詫び(追加の文)と、早着・定時の御礼(機長のいつもの文)は同じ位置に入る
+    { k: 'arrv', t: 'seg', label: '到着について', opts: [['', '入れない'], ['late', '遅れのお詫び'], ['early', '早着・定時の御礼']] },
   ],
   notes: ['原則としてチェックリスト終了後に行う。客室乗務員と事前確認することが望ましい。'],
   build(v) {
+    const a = v.arrv ?? (v.late ? 'late' : '');   // 前の版の「到着遅れのお詫びを入れる」(late)も読む
     const wj = { short: '飛行時間が短く、', ife: '機内エンターテイメントをお楽しみ頂くために、' }[v.why];
     const we = { short: 'As the flight was short, we refrained from making an announcement during the flight.', ife: 'We refrained from making an announcement during the flight so that you could enjoy the in-flight entertainment.' }[v.why];
     return {
-      ja: [J('本日は日本航空をご利用いただきまして、誠にありがとうございました。', v.late && FX('本日は到着が遅れ、大変ご迷惑をおかけいたしました。'), wj && `${wj}上空でのご挨拶を控えさせていただきました。`, 'またのご搭乗を心よりお待ち申し上げております。', 'この先もどうぞお気をつけて目的地までお出掛けください。')],
+      ja: [J('本日は日本航空をご利用いただきまして、誠にありがとうございました。', a === 'late' && FX('本日は到着が遅れ、大変ご迷惑をおかけいたしました。'), a === 'early' && 'また本日も定時運航へご協力いただき感謝いたします。', wj && `${wj}上空でのご挨拶を控えさせていただきました。`, 'またのご搭乗を心よりお待ち申し上げております。', 'この先もどうぞお気をつけて目的地までお出掛けください。')],
       // 英語の結びは機長の文(ハンドブックの "Have a nice trip to your destination." と意味が重なるため置き換え)
-      en: [E('On behalf of the entire crew, thank you for flying with Japan Airlines.', v.late && FX('We apologize for the late arrival today.'), we && FX(we), 'We look forward to welcoming you on board again. Also, we wish you a safe and pleasant journey ahead. Thank you.')],
+      en: [E('On behalf of the entire crew, thank you for flying with Japan Airlines.', a === 'late' && FX('We apologize for the late arrival today.'), a === 'early' && FX('We also appreciate your cooperation in helping us operate on time today.'), we && FX(we), 'We look forward to welcoming you on board again. Also, we wish you a safe and pleasant journey ahead. Thank you.')],
     };
   },
 });

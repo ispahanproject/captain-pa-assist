@@ -29,6 +29,8 @@ const ok = p => typeof p === 'string' && p.trim() !== '';
 const sit = id => SITS.find(s => s.id === id);
 // 前の版で「間もなく出発の準備が全て整います」を外していた設定(ready: false)を、新しい項目(prep)に引き継ぐ
 if (S.v.boarding && S.v.boarding.prep === undefined && S.v.boarding.ready === false) S.v.boarding.prep = '';
+// 前の版の降機中の搭乗御礼の「到着遅れのお詫びを入れる」(late)を、新しい項目(arrv)に引き継ぐ
+if (S.v.deplaneThanks && S.v.deplaneThanks.arrv === undefined && S.v.deplaneThanks.late) S.v.deplaneThanks.arrv = 'late';
 function vals(id) {
   if (!S.v[id]) S.v[id] = JSON.parse(JSON.stringify(sit(id).defaults || {}));
   return S.v[id];

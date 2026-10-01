@@ -294,7 +294,7 @@ details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: 
 .empty { display: grid; justify-items: center; gap: 12px; margin-top: 4px; padding: 72px 20px; border-radius: var(--radius); border: 1.5px dashed var(--line-strong); color: var(--muted); text-align: center; font-weight: 600; }
 .empty .ic { width: 44px; height: 44px; color: var(--accent); }
 .out { margin-bottom: 16px; overflow: hidden; }
-.out .head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); }
+.out .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); }
 .lang { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .06em; }
 .out .meta { flex: 1; color: var(--muted); font-size: 13px; font-weight: 600; }
 .pa { padding: 18px 20px 22px; font-size: var(--pa-size); line-height: 1.85; letter-spacing: .02em; }
@@ -306,6 +306,33 @@ details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: 
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 4px 0; font-size: 12px; color: var(--muted); }
 .legend .ph { font-size: 12px; }
 .fixs { text-decoration: underline dotted var(--violet); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* ---------- 手直し・読む前のチェック ---------- */
+.out .edited { flex: none; padding: 2px 9px; border-radius: 999px; background: var(--amber-bg); color: var(--amber-ink); font-size: 11px; font-weight: 800; }
+.out [data-edit][aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.out .pa-edit {
+  display: block; width: 100%; min-height: 8em; margin: 0; padding: 18px 20px 22px; border: 0; border-radius: 0;
+  background: var(--surface-2); font-size: var(--pa-size); line-height: 1.85; letter-spacing: .02em; resize: none; overflow: hidden;
+}
+.out .pa-edit:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+.stale { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--amber-bg); color: var(--amber-ink); font-size: 13px; font-weight: 700; line-height: 1.5; }
+.stale .t { flex: 1 1 240px; }
+.stale .tbtn { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.check { margin-bottom: 12px; padding: 10px 14px; border-left: 4px solid var(--line-strong); }
+.check.has-warn { border-left-color: var(--danger); }
+.check.ok { border-left-color: var(--accent); }
+.check .ck-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; }
+.check .ck-head .ic { width: 18px; height: 18px; }
+.check.has-warn .ck-head .ic { color: var(--danger); }
+.check.ok .ck-head { color: var(--text-2); font-weight: 700; }
+.check.ok .ck-head .ic, .check .ck-head .ic.i { color: var(--accent); }
+.check ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.check li { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.55; }
+.check li .ic { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.check li.warn { color: var(--text); font-weight: 600; }
+.check li.warn .ic { color: var(--danger); }
+.check li.info { color: var(--text-2); }
+.check li.info .ic { color: var(--muted); }
 
 /* ---------- 並べ替え ---------- */
 #orderBtn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
@@ -374,6 +401,16 @@ details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: 
 .pb-item .ja { font-size: 14px; line-height: 1.6; color: var(--text-2); }
 .pb-item .note { justify-self: start; margin-top: 4px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; }
 .pb-none { max-width: 860px; margin: 24px auto; }
+
+/* ---------- バージョン・更新のお知らせ ---------- */
+.ver { margin: 0; text-align: right; color: var(--muted); font-size: 12px; font-weight: 600; }
+.update-bar {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 45; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 8px 8px 8px 16px;
+  border-radius: 14px; border: 1px solid var(--accent-line); background: var(--surface); box-shadow: var(--shadow); font-size: 14px; font-weight: 700;
+}
+.update-bar .t { min-width: 0; }
+.update-bar .icon-btn { width: 40px; height: 40px; }
 
 /* ---------- 大きく表示 ---------- */
 .reader { position: fixed; inset: 0; z-index: 30; display: none; flex-direction: column; background: var(--bg); }
@@ -450,14 +487,19 @@ details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: 
     </div>
     <div class="empty" id="empty"><span data-ic="megaphone"></span><span id="emptyMsg">状況を選ぶと、ここにアナウンス文ができます</span></div>
     <div id="outCards">
+      <section class="check panel" id="checkPanel" hidden></section>
       <section class="reorder panel" id="orderPanel" hidden></section>
       <article class="out panel">
-        <div class="head"><span class="lang">日本語</span><span class="meta" id="jaMeta"></span><button class="tbtn" type="button" data-copy="ja"><span data-ic="copy"></span>コピー</button></div>
+        <div class="head"><span class="lang">日本語</span><span class="edited" id="jaEdited" hidden>手直し済み</span><span class="meta" id="jaMeta"></span><button class="tbtn" type="button" data-revert="ja" hidden><span data-ic="reset"></span>元に戻す</button><button class="tbtn" type="button" data-edit="ja"><span data-ic="free"></span><span class="t">編集</span></button><button class="tbtn" type="button" data-copy="ja"><span data-ic="copy"></span>コピー</button></div>
+        <div class="stale" id="jaStale" hidden><span class="t">状況や入力が変わり、作成された文が変わっています。手直しした文は前の内容のままです。</span><button class="tbtn" type="button" data-stale="ja" data-act="reset">作成された文に戻す</button><button class="tbtn" type="button" data-stale="ja" data-act="keep">手直しを使う</button></div>
         <div class="pa" id="outJa" lang="ja"></div>
+        <textarea class="pa-edit" id="editJa" lang="ja" spellcheck="false" hidden aria-label="日本語のアナウンス文を編集"></textarea>
       </article>
       <article class="out panel">
-        <div class="head"><span class="lang">ENGLISH</span><span class="meta" id="enMeta"></span><button class="tbtn" type="button" data-copy="en"><span data-ic="copy"></span>Copy</button></div>
+        <div class="head"><span class="lang">ENGLISH</span><span class="edited" id="enEdited" hidden>手直し済み</span><span class="meta" id="enMeta"></span><button class="tbtn" type="button" data-revert="en" hidden><span data-ic="reset"></span>元に戻す</button><button class="tbtn" type="button" data-edit="en"><span data-ic="free"></span><span class="t">編集</span></button><button class="tbtn" type="button" data-copy="en"><span data-ic="copy"></span>Copy</button></div>
+        <div class="stale" id="enStale" hidden><span class="t">状況や入力が変わり、作成された文が変わっています。手直しした文は前の内容のままです。</span><button class="tbtn" type="button" data-stale="en" data-act="reset">作成された文に戻す</button><button class="tbtn" type="button" data-stale="en" data-act="keep">手直しを使う</button></div>
         <div class="pa" id="outEn" lang="en"></div>
+        <textarea class="pa-edit" id="editEn" lang="en" spellcheck="true" autocapitalize="sentences" hidden aria-label="英語のアナウンス文を編集"></textarea>
       </article>
       <p class="legend"><span><span class="ph">〇〇</span> 未入力・読むときに補う</span><span><span class="fixs">点線</span> ハンドブックから直した・足した箇所(タップで原文)</span></p>
     </div>
@@ -488,6 +530,7 @@ details.notes .ctt p::before { content: ""; position: absolute; left: 2px; top: 
   </div>
   <div class="pb-body" id="pbBody"></div>
 </div>
+<div class="update-bar" id="updateBar" role="status" hidden><span class="t">新しい版が届きました。更新すると反映されます。</span><button class="tbtn primary" id="updateBtn" type="button">更新する</button><button class="icon-btn" id="updateClose" type="button" aria-label="閉じる"><span data-ic="x"></span></button></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>

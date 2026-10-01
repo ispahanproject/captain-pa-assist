@@ -1,9 +1,9 @@
-// オフライン用のキャッシュ(Web で公開したとき用)。v-3273e2544bae は build.sh が index.html などのハッシュに置き換えるので、
+// オフライン用のキャッシュ(Web で公開したとき用)。v1.1.0-e37b3a0aa649 は build.sh が index.html などのハッシュに置き換えるので、
 // 作り直すたびに新しいキャッシュになる。画面はキャッシュから先に出し、裏で新しい版を取りに行く(次に開いたときに反映)
-const VERSION = 'v-3273e2544bae';
+const VERSION = 'v1.1.0-e37b3a0aa649';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k))))

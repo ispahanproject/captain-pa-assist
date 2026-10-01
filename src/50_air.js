@@ -27,7 +27,7 @@ SITS.push({
   ],
   notes: ['簡易版:早朝や深夜、また短いフライトでは、タイミングを工夫してシンプルなご挨拶をすることでも、お客さまに感謝の意を示すことができます。', '修学旅行生へのアナウンスは積極的に。ただし学校名を入れるかどうかは、先任客室乗務員に確認(客室本部が学校側と事前確認済み)。', '「ちょうど」と「頃」、「約」と「ぐらい」を重ねない(例:「午後4時前後の予定です」「約15分」)。'],
   build(v, x) {
-    if (v.kind === 'simple') return { ja: [], en: [], close: [{ g: 'enjoy', ja: 'どうぞごゆっくりお過ごしください。', en: 'We wish you a pleasant flight. Thank you.' }] };
+    if (v.kind === 'simple') return { ja: [], en: [], close: [{ g: 'enjoy', ja: 'どうぞごゆっくりお過ごしください。', en: 'We wish you a pleasant flight.' }, CL.thanks] };
     const ja = [], en = [];
     const L = v.side ? lmPick(v) : null, sj = v.side === 'right' ? '右' : '左';
     const ft = has(v.alt) ? +v.alt : null;
@@ -48,7 +48,7 @@ SITS.push({
       ja: J(v.lobby && '出発ロビーでもご案内させていただきましたように、', `この便の到着予定時刻における目的地${x.d.ja}の天候が、着陸に関する安全基準値を下回る可能性がございます。`, `着陸時に安全基準が満たされない場合、やむを得ず${ret ? '引き返し' : '他の空港への目的地変更'}を行う場合があります。`, '予めご了承ください。'),
       en: E(`${v.lobby ? 'As previously announced in the departure lobby, the' : 'The'} weather conditions at ${x.d.en} may not satisfy our safe landing limitations.`, `If the weather conditions do not meet our safety standards, we may have to ${ret ? FX('return to ' + x.o.en, 'return back') : FX('divert to another airport', 'change our destination to the other airport')}.`, FX('We ask for your understanding.', 'We ask for your understanding on this situation.')) });
     parts.push({ s: 'belt', ...RB.belt });
-    return { ja, en, parts, close: [{ g: 'enjoy', ja: '皆様、どうぞごゆっくりお過ごし下さい。ご搭乗、誠にありがとうございます。', en: 'We wish you a pleasant flight. Thank you.' }] };
+    return { ja, en, parts, close: [{ g: 'enjoy', ja: '皆様、どうぞごゆっくりお過ごし下さい。ご搭乗、誠にありがとうございます。', en: 'We wish you a pleasant flight.' }, CL.thanks] };
   },
 });
 

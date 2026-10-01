@@ -4,9 +4,10 @@
 // 挨拶 → 出発準備 → (遅れの理由) → 飛行時間(言うときに補う) → 現地の天候と気温・航路上の天候 → ベルト着用のお願い → 到着までどうぞごゆっくり
 SITS.push({
   id: 'boarding', t: ['pre'], g: '搭乗中', label: '搭乗中のアナウンス(通常)', src: '2.3.2.4.2.3', greet: true,
-  defaults: { ready: true, route: 'good' },
+  defaults: { prep: 'soon', route: 'good' },
   fields: [
-    { k: 'ready', t: 'chk', label: '「間もなく出発の準備が全て整います」を入れる' },
+    { k: 'prep', t: 'seg', label: '出発準備', opts: [['soon', '間もなく整う'], ['done', '整っている'], ['', '入れない']],
+      hint: '「整っている」は「出発の準備は全て整っておりますが、」で、一緒に選んだ出発の遅れ・フローなどの理由につなげます(選ばないときは理由を言うときに補います)。' },
     { t: 'row', items: [{ k: 'dwx', t: 'sel', label: '現地の天候', opts: WX_OPTS }, { k: 'dtemp', t: 'num', label: '気温', unit: '℃', neg: true }] },
     { k: 'route', t: 'seg', label: '航路上の天候', opts: [['good', '概ね良好'], ['bumpy', '多少気流が不安定'], ['', '入れない']] },
   ],
@@ -14,8 +15,9 @@ SITS.push({
   build(v, x) {
     const W = destWeather(v, x.d, true), RB = routeAndBelt(v);
     return {
-      ja: [v.ready && '間もなく出発の準備が全て整います。'],
-      en: [v.ready && `We will soon be ready for our departure to ${x.d.en}.`],
+      // 「整っている」は、理由がつながらないときの形(つながるときは compose の mergeReady が理由の文頭に入れる)
+      ja: [v.prep === 'soon' && '間もなく出発の準備が全て整います。', v.prep === 'done' && READY_DONE_JA + FX(`${P('理由')}のため、出発まで今しばらくお待ちください。`)],
+      en: [v.prep === 'soon' && `We will soon be ready for our departure to ${x.d.en}.`, v.prep === 'done' && FX(`We are all ready for departure. However, due to ${P('reason')}, we ask that you wait a little longer.`)],
       parts: [
         { s: 'time', ja: `当便の${x.d.ja}までの飛行時間は${P('〇〇')}を予定しています。`, en: `Our flight time is expected to be ${P('___')}.` },
         { s: 'wx', ja: FX(W.ja), en: FX(W.en) },

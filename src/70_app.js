@@ -99,7 +99,9 @@ function buildFields(container, fields, vals, onChange) {
           if (multi) { const a = vals[f.k]; vals[f.k] = a.includes(v) ? a.filter(z => z !== v) : [...a, v]; } else vals[f.k] = v;
           paint(); change(f.k);
         } }, multi ? ic('check') : null, l)));
-        paint(); wrap.append(lbl, box); break;
+        paint(); wrap.append(lbl, box);
+        if (f.hint) wrap.append(el('div', { class: 'hint' }, f.hint));
+        break;
       }
       case 'chk': {
         const c = el('input', { type: 'checkbox', class: 'switch', role: 'switch', onchange: e => set(f.k, e.target.checked) });
@@ -254,10 +256,11 @@ const count = tm => (tm === 'free' ? S.free.items.length : selected(tm).length);
 // All clear:すべてのタイミングの選択(自由作成の文も)と「追加で伝えたいこと」を消す。入力した時刻などは残す
 const anySelected = () => TIMINGS.some(([t]) => count(t)) || Object.values(S.extra).some(x => ok(x.xJa) || ok(x.xEn));
 function allClear() {
-  if (!anySelected() || !confirm('出発前・上空・到着後・緊急・自由作成の選択と「追加で伝えたいこと」をすべて消しますか?\n(入力した時刻などの内容は残ります)')) return;
+  if (!anySelected() || !confirm('出発前・上空・到着後・緊急・自由作成の選択と「追加で伝えたいこと」、アナウンス文の手直しをすべて消しますか?\n(入力した時刻などの内容は残ります)')) return;
   Object.keys(S.sel).forEach(t => (S.sel[t] = []));
   S.free.items = [];
   S.extra = {};
+  S.edits = {}; editing.ja = editing.en = false;
   S.listOpen = true; libAt = null; clearSearch();
   paintAll(); toast('すべての選択をクリアしました');
 }
@@ -327,6 +330,7 @@ const KEYWORDS = {
   nearLimit: 'マージナル ミニマム 視界 横風', ga: 'ゴーアラウンド ミストアプローチ 着陸やり直し',
   divert: 'ダイバート ダイバージョン 引き返し 目的地変更', thunder: 'ブロックイン スポット 駐機場',
   svcLimited: '機内サービス 飲み物', svcAdvance: '機内サービス 飲み物 悪天候 揺れ', gtbMech: 'GTB ランプリターン 故障', gtbOther: 'GTB ランプリターン', rto: '離陸中止 バードストライク', lowpass: 'LOW PASS タイヤ ギア 脚',
+  rebook: '台風 欠航 振替 振り替え 座席 お席 満席 機材変更 お詫び 謝罪 迷惑',
 };
 let query = '';
 const kana = s => s.normalize('NFKC').toLowerCase().replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
@@ -482,7 +486,7 @@ function paintFreeForms(box) {
   buildFields(b0, [{ k: 'open', t: 'seg', opts: [['auto', '自動'], ['fixed', 'いつもの挨拶'], ['cockpit', '操縦室より'], ['none', 'なし']] }], F, () => { paintPresets(); render(); });
   b0.querySelector('.seg').setAttribute('aria-label', '冒頭');
   box.append(el('section', { class: 'fcard panel' },
-    el('div', { class: 'hd' }, el('div', { class: 'ttl' }, '冒頭', el('small', {}, '自動:搭乗中・上空での挨拶の本文を選ぶと「いつもの挨拶」、それ以外は「操縦室より…」'))), b0));
+    el('div', { class: 'hd' }, el('div', { class: 'ttl' }, '冒頭', el('small', {}, '自動:搭乗中の状況の文や上空での挨拶の本文を選ぶと「いつもの挨拶」、それ以外は「操縦室より…」'))), b0));
   const move = (i, d) => { const a = F.items; [a[i], a[i + d]] = [a[i + d], a[i]]; paintAll(); };
   const list = el('ol', { class: 'freelist' }, F.items.map((p, i) => {
     const b = resolvePiece(p), text = b && (b.ja.join('') || b.en.join(' '));
@@ -530,13 +534,8 @@ function render() {
   $('#allClear').disabled = !anySelected();
   $('#emptyMsg').textContent = S.tm === 'free' ? '文を選ぶと、ここにアナウンス文ができます' : '状況を選ぶと、ここにアナウンス文ができます';
   paintOrder();
-  if (current) {
-    $('#outJa').innerHTML = toHtml(current.ja);
-    $('#outEn').innerHTML = toHtml(current.en);
-    const jl = toText(current.ja).replace(/\s/g, '').length, ew = toText(current.en).split(/\s+/).filter(Boolean).length;
-    $('#jaMeta').textContent = `約${Math.max(5, Math.round(jl / 5 / 5) * 5)}秒`;
-    $('#enMeta').textContent = `about ${Math.max(5, Math.round(ew / 2.4 / 5) * 5)} sec`;
-  }
+  if (current) { paintCard('ja'); paintCard('en'); paintMeta(); }
+  paintChecks();
   const route = `${S.flight.fn ? `JL${S.flight.fn}  ` : ''}${ORIG().city} → ${DEST().city}`;
   $('#summary').textContent = route;
   $('#setSub').textContent = route;
@@ -544,6 +543,67 @@ function render() {
   if ($('#reader').classList.contains('open')) paintReader();
   save();
 }
+/* ---------- アナウンス文の手直し(自分で直す) ---------- */
+// 手直しはタイミング+選んだ状況ごとに覚える。base は直したときの作成された文(あとで元の文が変わったか調べる)
+const editKey = () => (S.tm === 'free' ? 'free' : orderKey(S.tm));
+const editOf = l => (S.edits[editKey()] || {})[l];
+const editing = { ja: false, en: false };
+const CARD = { ja: { out: '#outJa', ta: '#editJa', badge: '#jaEdited', stale: '#jaStale' }, en: { out: '#outEn', ta: '#editEn', badge: '#enEdited', stale: '#enStale' } };
+// 直した文を段落に分ける(空行で区切る)。〔〇〇〕や打ち込んだ 〇〇・___ は空欄として黄色で表示する
+const editParas = t => t.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+  .map(p => p.replace(/〔(.*?)〕/g, '⟦$1⟧').replace(/⟦[^⟧]*⟧|[〇○]{2,}|_{3,}/g, m => (m[0] === '⟦' ? m : `⟦${m}⟧`)));
+// 読む文(手直しがあればそれ、なければ作成された文)
+const effective = l => { const e = editOf(l); return e ? editParas(e.text) : current ? current[l] : []; };
+const autoGrow = ta => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+function paintCard(l) {
+  const C = CARD[l], e = editOf(l), ta = $(C.ta), card = ta.closest('.out'), gen = toText(current[l]), k = editKey();
+  $(C.out).innerHTML = toHtml(effective(l));
+  $(C.out).hidden = editing[l];
+  $(C.badge).hidden = !e;
+  card.querySelector('[data-revert]').hidden = !e;
+  const eb = card.querySelector('[data-edit]');
+  eb.setAttribute('aria-pressed', editing[l]);
+  eb.querySelector('.t').textContent = editing[l] ? '完了' : '編集';
+  $(C.stale).hidden = !(e && e.base !== gen);
+  ta.hidden = !editing[l];
+  if (!editing[l]) return;
+  // 手直しがないときは作成された文を、状況が変わったときはその状況の手直しを入れる(打っている途中の文は消さない)
+  if (!e) { if (ta.value !== gen) ta.value = gen; } else if (ta.dataset.key !== k) ta.value = e.text;
+  ta.dataset.key = k;
+  autoGrow(ta);
+}
+function paintMeta() {
+  const jl = toText(effective('ja')).replace(/\s/g, '').length, ew = toText(effective('en')).split(/\s+/).filter(Boolean).length;
+  $('#jaMeta').textContent = `約${Math.max(5, Math.round(jl / 5 / 5) * 5)}秒`;
+  $('#enMeta').textContent = `about ${Math.max(5, Math.round(ew / 2.4 / 5) * 5)} sec`;
+}
+// 手直しを書き込む。作成された文と同じになったら手直しなしに戻す
+function setEdit(l, text) {
+  const k = editKey(), box = S.edits[k] || (S.edits[k] = {}), gen = toText(current[l]);
+  if (text === null || text === gen) delete box[l];
+  else box[l] = { text, base: box[l] ? box[l].base : gen };
+  if (!box.ja && !box.en) delete S.edits[k];
+}
+function afterEdit(l) {
+  paintCard(l); paintMeta(); paintChecks();
+  if ($('#reader').classList.contains('open')) paintReader();
+  save();
+}
+/* ---------- 読む前のチェック ---------- */
+function paintChecks() {
+  const box = $('#checkPanel');
+  box.hidden = !current;
+  if (!current) return;
+  const items = checkPA({ ja: effective('ja'), en: effective('en') }, { ja: current.ja, en: current.en },
+    { ja: !!editOf('ja'), en: !!editOf('en') }, { ja: toText([current.open.ja || '']), en: toText([current.open.en || '']) });
+  const w = items.filter(i => i.lv === 'warn').length;
+  box.className = 'check panel' + (w ? ' has-warn' : items.length ? '' : ' ok');
+  box.replaceChildren(
+    el('div', { class: 'ck-head' }, w ? ic('emg') : ic(items.length ? 'info' : 'check'),
+      w ? `読む前のチェック:直したほうがよい点が${w}件` : items.length ? '読む前のチェック' : '読む前のチェック:気になる点はありません'),
+    items.length ? el('ul', {}, items.map(i => el('li', { class: i.lv }, ic(i.lv === 'warn' ? 'emg' : 'info'), el('span', {}, i.msg)))) : '');
+}
+
 // 並べ替え:ブロック(日本語と英語の組)ごとに ↑↓ で入れ替える。冒頭と締めは固定
 const SEC_LABEL = { main: '本文', delay: '遅れの理由', time: '飛行時間', wx: '気象情報', route: '航路上の天候', belt: 'ベルト', svc: 'サービス', close: '締め', extra: '追加' };
 const plain = p => p.replace(FXRE, '$1').replace(/⟦(.*?)⟧/g, '$1');
@@ -581,8 +641,8 @@ function paintAll() { paintPresets(); paintTabs(); paintSits(); paintForms(); re
 function paintReader() {
   const m = S.reader, parts = [];
   if (!current) { $('#readerBody').innerHTML = ''; return; }
-  if (m !== 'en') parts.push(`<div lang="ja">${toHtml(current.ja, false)}</div>`);
-  if (m !== 'ja') parts.push(`<div lang="en">${toHtml(current.en, false)}</div>`);
+  if (m !== 'en') parts.push(`<div lang="ja">${toHtml(effective('ja'), false)}</div>`);
+  if (m !== 'ja') parts.push(`<div lang="en">${toHtml(effective('en'), false)}</div>`);
   $('#readerBody').innerHTML = parts.join('<hr>');
   [['ja', '#rJa'], ['en', '#rEn'], ['both', '#rBoth']].forEach(([k, q]) => $(q).setAttribute('aria-pressed', m === k));
 }
@@ -615,11 +675,16 @@ function toast(t, ms = 1600) {
 }
 
 /* ---------- 初期化 ---------- */
-// Web で公開した版(https)では、オフラインでも開けるようにキャッシュする。ファイルを直接開いたときは何もしない
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Web で公開した版(https)では、オフラインでも開けるようにキャッシュする。ファイルを直接開いたときは何もしない。
+// 新しい版が届いたら(2回目以降)お知らせを出し、「更新する」で読み込み直す(読み上げ中に勝手に切り替えないため)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) $('#updateBar').hidden = false; });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 document.querySelectorAll('[data-ic]').forEach(n => { n.classList.add('ic'); n.innerHTML = ICONS[n.dataset.ic]; });
 buildFields($('#flightForm'), FLIGHT_FIELDS, S.flight, flightChange);
-$('#flightForm').append(routeBox());
+$('#flightForm').append(routeBox(), el('p', { class: 'ver' }, `Captain PA Assist v${APP_VERSION}(${APP_DATE})`));
 paintRoutes(); paintFlightHint();
 if (firstRun) $('#flightBox').open = true;
 applyLook();
@@ -630,6 +695,8 @@ if ('IntersectionObserver' in window) {
 
 $('#sitSearch').addEventListener('input', e => { query = e.target.value; paintSits(); });
 $('#listToggle').onclick = () => setListOpen(!S.listOpen);
+$('#updateBtn').onclick = () => location.reload();
+$('#updateClose').onclick = () => ($('#updateBar').hidden = true);
 $('#allClear').onclick = allClear;
 $('#summary').onclick = () => { $('#flightBox').open = true; $('#flightBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 $('#fab').onclick = () => $('#outputPane').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -648,6 +715,27 @@ $('#clearSel').onclick = () => {
 };
 $('#readBtn').onclick = () => { if (!current) return toast(S.tm === 'free' ? '先に文を選んでください' : '先に状況を選んでください'); $('#reader').classList.add('open'); paintReader(); };
 $('#rClose').onclick = () => $('#reader').classList.remove('open');
+// 手直し:編集 / 完了、元に戻す、状況が変わったときの「作成された文に戻す」「手直しを使う」
+['ja', 'en'].forEach(l => {
+  const ta = $(CARD[l].ta);
+  ta.addEventListener('input', () => { setEdit(l, ta.value); ta.dataset.key = editKey(); afterEdit(l); });
+  document.querySelector(`[data-edit="${l}"]`).onclick = () => {
+    if (!current) return;
+    editing[l] = !editing[l];
+    ta.dataset.key = '';
+    afterEdit(l);
+    if (editing[l]) ta.focus();
+  };
+  document.querySelector(`[data-revert="${l}"]`).onclick = () => { setEdit(l, null); ta.dataset.key = ''; afterEdit(l); toast('作成された文に戻しました'); };
+});
+document.querySelectorAll('[data-stale]').forEach(b => (b.onclick = () => {
+  const l = b.dataset.stale, e = editOf(l);
+  if (!e) return;
+  if (b.dataset.act === 'reset') { setEdit(l, null); toast('作成された文に戻しました'); }
+  else e.base = toText(current[l]);
+  $(CARD[l].ta).dataset.key = '';
+  afterEdit(l);
+}));
 $('#phraseBtn').onclick = () => { $('#phrasebook').classList.add('open'); paintPhrasebook(); $('#pbBody').scrollTop = 0; };
 $('#pbClose').onclick = () => $('#phrasebook').classList.remove('open');
 $('#pbSearch').addEventListener('input', e => { pbQuery = e.target.value; paintPhrasebook(); });
@@ -660,7 +748,7 @@ $('#outCards').addEventListener('click', e => {
 });
 document.querySelectorAll('[data-copy]').forEach(b => (b.onclick = async () => {
   if (!current) return;
-  const t = toText(current[b.dataset.copy]);
+  const t = toText(effective(b.dataset.copy));
   try { await navigator.clipboard.writeText(t); }
   catch (e) { const ta = el('textarea'); ta.value = t; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
   toast('コピーしました');

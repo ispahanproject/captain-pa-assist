@@ -71,6 +71,65 @@ SITS.push({
   },
 });
 
+// 台風や欠航による振替・座席の変更などのお詫び。文面は機長のいつもの文例
+// 「本日は、台風の影響を受け、欠航等が発生した関係で振り替えやお座席の変更等が発生し、ご予定の変更を余儀なくされた方や、
+//   ご不安な思いをされた方も多いことと存じます。お客さまには大変ご不便、ご迷惑をおかけしておりますことを、お詫び申し上げます。
+//   重ねて、安全運航へのご理解とご協力感謝申し上げます」(お客さまの気持ちに寄り添う一文を入れた形)。
+// 初期設定(台風・振り替え・お座席の変更)でこの文そのものになる。ほかの理由・影響を選んだ部分は言い換え(点線)。英語は訳。
+// 到着後は「多かった」「おかけいたしました」にして本文の段(main)に入れ、降機の搭乗御礼(より後に定義)の前に来るようにしている
+const RB = '(いつもの文例を言い換え)';
+// [key, ラベル, 理由(日本語・「〜関係で」まで), 英語(今), 英語(到着後)]。英語は文全体を最後に FX で囲むので、ここでは囲まない
+const REBOOK_R = [
+  ['typhoon', '台風による欠航', '台風の影響を受け、欠航等が発生した関係で',
+    'Due to the typhoon, there have been flight cancellations and other disruptions today', 'Due to the typhoon, there were flight cancellations and other disruptions today'],
+  ['weather', '悪天候による欠航', FX('悪天候の影響を受け、欠航等が発生した関係で', RB),
+    'Due to bad weather, there have been flight cancellations and other disruptions today', 'Due to bad weather, there were flight cancellations and other disruptions today'],
+  ['cancel', '欠航(理由は言わない)', FX('欠航等が発生した関係で', RB),
+    'There have been flight cancellations and other disruptions today', 'There were flight cancellations and other disruptions today'],
+  ['change', '機材変更', FX('使用する飛行機の変更があった関係で', RB),
+    'There has been a change of aircraft for this flight today', 'There was a change of aircraft for this flight today'],
+  ['other', 'その他(手入力)', v => FX(`${or(v.whyJa, '理由')}の関係で`, RB),
+    v => `Due to ${or(v.whyEn, 'reason')}, there have been changes to this flight today`, v => `Due to ${or(v.whyEn, 'reason')}, there were changes to this flight today`],
+];
+// お客さまへの影響 [key, ラベル, 日本語(名詞), 英語(今), 英語(到着後)]。満席は英語では別の文にする
+const REBOOK_I = [
+  ['furikae', '振り替え', '振り替え', 'been rebooked onto this flight', 'were rebooked onto this flight'],
+  ['seat', 'お座席の変更', 'お座席の変更', 'had your seats changed', 'had your seats changed'],
+  ['apart', 'お連れさまと離れたお席', FX('お連れさまと離れたお席のご案内', RB), 'been seated apart from your travel companions', 'were seated apart from your travel companions'],
+  ['class', 'クラスの変更', FX('ご予約と異なるクラスのご利用', RB), 'been seated in a different class from your original booking', 'were seated in a different class from your original booking'],
+  ['full', '満席で機内が混雑', FX('満席による機内の混雑', RB), '', ''],
+];
+const orEn = a => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} or ${a[a.length - 1]}`);
+SITS.push({
+  id: 'rebook', sec: 'delay', t: ['pre', 'air', 'arr'], g: { pre: '搭乗中', air: '挨拶', arr: '御礼' },
+  label: '欠航・振替に伴うお詫び(座席の変更など)', src: 'いつもの文例',
+  defaults: { r: 'typhoon', imp: ['furikae', 'seat'] },
+  fields: [
+    { k: 'r', t: 'sel', label: '理由', opts: optsOf(REBOOK_R) },
+    { k: 'why', t: 'text2', label: '理由(手入力)', ph: ['例:機材の不具合', 'e.g. a technical problem'], show: v => v.r === 'other' },
+    { k: 'imp', t: 'chips', label: 'お客さまへの影響(複数選べます)', opts: optsOf(REBOOK_I) },
+  ],
+  notes: ['初期設定(台風・振り替え・お座席の変更)で、いつもの文例そのままになります。ほかの理由・影響を選ぶと、その部分は言い換え(点線)です。', 'お席の移動などの対応は地上係員・客室乗務員の判断によるため、機長のアナウンスでは約束しない言い方にしています。'],
+  build(v, x) {
+    const past = x.t === 'arr', r = opt(REBOOK_R, v.r), imps = REBOOK_I.filter(i => (v.imp || []).includes(i[0]));
+    const pj = f => (typeof f === 'function' ? f(v) : f);
+    const nouns = imps.map(i => i[2]).join('や'), verbs = imps.filter(i => i[3]).map(i => i[past ? 4 : 3]);
+    const full = imps.some(i => i[0] === 'full');
+    const ja = J(`本日は、${pj(r[2])}`, nouns ? `${nouns}等が発生し、` : '、',
+      `ご予定の変更を余儀なくされた方や、ご不安な思いをされた方も${past ? FX('多かった', '(いつもの文例は「多い」)') : '多い'}ことと存じます。`,
+      `お客さまには大変ご不便、ご迷惑を${past ? FX('おかけいたしました', '(いつもの文例は「おかけしております」)') : 'おかけしております'}ことを、お詫び申し上げます。`,
+      '重ねて、安全運航へのご理解とご協力感謝申し上げます。');
+    const en = E(`${pj(r[past ? 4 : 3])}${verbs.length ? `, and as a result, some of you ${past ? '' : 'have '}${orEn(verbs)}.` : '.'}`,
+      full && (past ? "The cabin was also full and crowded." : "Today's flight is also full, and the cabin is crowded."),
+      past ? 'We know that many of you had to change your plans, and some of you may have been worried about your travel.'
+        : 'We know that many of you have had to change your plans, and some of you may have been worried about your travel.',
+      `We sincerely apologize for the inconvenience this ${past ? 'caused' : 'has caused'}.`,
+      'We also thank you for your understanding and cooperation with our safe operation.');
+    // 英語は訳(点線)。到着後は本文の段に入れて、降機の搭乗御礼の前に来るようにする
+    return past ? { ja: [], en: [], parts: [{ s: 'main', ja, en: FX(en) }] } : { ja: [ja], en: [FX(en)] };
+  },
+});
+
 SITS.push({
   id: 'deplaneThanks', t: ['arr'], g: '御礼', label: '降機中の搭乗御礼', src: '2.3.2.4.2.4',
   defaults: { why: '' },

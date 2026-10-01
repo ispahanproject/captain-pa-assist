@@ -5,6 +5,7 @@ const KEY = 'captain-pa-assist-v2';
 let S = {
   flight: { fn: '', orig: 'HND', dest: 'OKA', greet: 'auto', clock: '12', nick: false, lt: false },
   routes: {},   // 便名 → [出発地, 目的地](使いながら覚える。キーは先頭の0を除いた数字)
+  edits: {},    // アナウンス文の手直し。キー(タイミング+選んだ状況) → { ja|en: { text: 直した文, base: 直したときの元の文 } }
   tm: 'air', sel: { pre: [], air: [], arr: [], emg: [], free: [] },
   free: { open: 'auto', items: [] },   // 自由作成:冒頭(auto / fixed / cockpit / none)と、選んだ文
   v: {}, extra: {}, font: 20, theme: 'dark', reader: 'ja', fix: true,
@@ -26,6 +27,8 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch
 const $ = q => document.querySelector(q);
 const ok = p => typeof p === 'string' && p.trim() !== '';
 const sit = id => SITS.find(s => s.id === id);
+// 前の版で「間もなく出発の準備が全て整います」を外していた設定(ready: false)を、新しい項目(prep)に引き継ぐ
+if (S.v.boarding && S.v.boarding.prep === undefined && S.v.boarding.ready === false) S.v.boarding.prep = '';
 function vals(id) {
   if (!S.v[id]) S.v[id] = JSON.parse(JSON.stringify(sit(id).defaults || {}));
   return S.v[id];
@@ -122,11 +125,29 @@ function applyOrder(blocks, saved) {
   let i = 0;
   return blocks.map(b => (saved.includes(b.key) ? moved[i++] : b));
 }
+// 冒頭をいつもの挨拶にする状況:挨拶の状況(搭乗中のアナウンス・上空での挨拶)と、出発前の「搭乗中」の状況すべて
+const greets = (s, tm) => !!s && (!!s.greet || (tm === 'pre' && grpOf(s, 'pre') === '搭乗中'));
+// 「出発の準備は全て整っておりますが、」を、続く待ちの理由(出発の遅れ・フローなど)の文頭につなげる。
+// 理由の文頭の前置き(「現在、出発時刻を過ぎましたが、」「早々にご搭乗いただき恐縮ではございますが、」など)は外す
+function mergeReady(blocks) {
+  const i = blocks.findIndex(b => b.key === 'boarding' && (b.ja[0] || '').startsWith(READY_DONE_JA));
+  const j = blocks.findIndex((b, n) => n > i && WAIT_IDS.includes(b.key));
+  if (i < 0 || j < 0) return blocks;
+  const b = blocks[j];
+  const ja0 = b.ja[0].replace(/^(?:現在、)?[^。、]*?(?:過ぎましたが|ございますが)、/, '').replace(/^この便の出発準備は全て整っております。/, '');
+  const en0 = b.en[0].replace(/^We have completed our departure preparations\. However, /, '');
+  const en = /^(Due|Our|Air|We|There|we)\b/.test(en0)
+    ? `${FX('We are all ready for departure. However,')} ${en0[0].toLowerCase()}${en0.slice(1)}` : `${FX('We are all ready for departure.')} ${en0}`;
+  const out = blocks.slice();
+  out[j] = { ...b, ja: [READY_DONE_JA + ja0, ...b.ja.slice(1)], en: [en, ...b.en.slice(1)] };
+  out.splice(i, 1);
+  return out;
+}
 function compose(tm) {
   if (tm === 'free') return composeFree();
   const ids = selected(tm);
   if (!ids.length) return null;
-  const O = opening(ids.some(id => sit(id).greet)), cl = {};
+  const O = opening(ids.some(id => greets(sit(id), tm))), cl = {};
   // 本文はブロックで集め、段(SECTION_ORDER)の順に並べる。time と belt は1つだけ(後の状況のもの)
   let blocks = [];
   const add = b => {
@@ -140,6 +161,7 @@ function compose(tm) {
     r.closes.forEach(c => { cl[c.g] = c; });
   });
   blocks.sort((a, b) => SECTION_ORDER.indexOf(a.sec) - SECTION_ORDER.indexOf(b.sec));
+  blocks = mergeReady(blocks);
   const ex = S.extra[tm] || {};
   if (ok(ex.xJa) || ok(ex.xEn)) add({ sec: 'extra', key: 'extra', ja: [ex.xJa].filter(ok), en: [ex.xEn].filter(ok) });
   blocks = applyOrder(blocks, S.order[orderKey(tm)]);
@@ -203,8 +225,10 @@ function composeFree() {
   const F = S.free, ex = S.extra.free || {};
   const pieces = F.items.map(resolvePiece).filter(Boolean);
   if (!pieces.length && !ok(ex.xJa) && !ok(ex.xEn)) return null;
-  // 自動:挨拶の状況(搭乗中・上空での挨拶)の本文を選んだときだけ、いつもの挨拶。ベルトや天候などの共通の文では変えない
-  const greeting = F.open === 'auto' ? F.items.some(p => p.sec === 'main' && sit(p.id) && sit(p.id).greet) : F.open === 'fixed';
+  // 自動:搭乗中の状況の文、または上空での挨拶の本文を選んだときは、いつもの挨拶。
+  // 飛行時間・航路・ベルト・締めのような共通の文(挨拶の状況は天候も)では変えない
+  const lead = p => { const s = sit(p.id); return greets(s, p.tm) && (s.greet ? p.sec === 'main' : !['time', 'route', 'belt', 'close'].includes(p.sec)); };
+  const greeting = F.open === 'auto' ? F.items.some(lead) : F.open === 'fixed';
   const O = F.open === 'none' ? { ja: '', en: '' } : opening(greeting);
   // 追加で伝えたいことは、最後に並んだ締めの言葉の前に入れる
   let k = pieces.length;
@@ -280,6 +304,65 @@ function phraseLibrary() {
     });
   });
   return groups;
+}
+
+/* ---------- 読む前のチェック(添削) ---------- */
+// eff:読む文(手直し込み)、gen:作成された文(どちらも段落の配列)、edited:手直しした言語、open:冒頭の文(平文)
+// 返り値 [{ lv: 'warn'(直したほうがよい) | 'info'(確認), msg }]
+const LANG_NAME = { ja: '日本語', en: '英語' };
+const cut = s => (s.length > 30 ? s.slice(0, 30) + '…' : s);
+const zen2han = t => t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+const nums = t => (zen2han(t).match(/\d+(?:[.,]\d+)*/g) || []).map(n => n.replace(/,/g, ''));
+const blankCount = t => (t.match(/〔[^〕]*〕|[〇○]{2,}|_{3,}/g) || []).length;
+// a にあって b にない数字(同じ数字が複数あるときは数も比べる)
+function numDiff(a, b) {
+  const m = new Map(), out = [];
+  b.forEach(x => m.set(x, (m.get(x) || 0) + 1));
+  a.forEach(x => { if (m.get(x)) m.set(x, m.get(x) - 1); else out.push(x); });
+  return out;
+}
+const sentencesJa = t => t.replace(/([。!?!?])/g, '$1\n').split('\n').map(s => s.trim()).filter(Boolean);
+const sentencesEn = t => t.replace(/\b([ap])\.m\./gi, '$1m').replace(/([.!?])\s+/g, '$1\n').split('\n').map(s => s.trim()).filter(Boolean);
+function checkPA(eff, gen, edited = {}, open = {}) {
+  const out = [], warn = msg => out.push({ lv: 'warn', msg }), info = msg => out.push({ lv: 'info', msg });
+  const P2 = { ja: eff.ja.map(p => toText([p])), en: eff.en.map(p => toText([p])) };
+  const all = { ja: P2.ja.join('\n'), en: P2.en.join(' ') };
+  const sent = { ja: sentencesJa(all.ja), en: sentencesEn(all.en) };
+  // 同じ文が2回
+  ['ja', 'en'].forEach(l => {
+    const seen = new Map();
+    sent[l].filter(s => s.length >= 4).forEach(s => seen.set(s, (seen.get(s) || 0) + 1));
+    seen.forEach((n, s) => { if (n > 1) warn(`${LANG_NAME[l]}で同じ文が${n}回あります:「${cut(s)}」`); });
+  });
+  // ハンドブックの注意:「ちょうど」と「頃」、「約」と「ぐらい」を重ねない
+  sent.ja.forEach(s => {
+    if (/約\s*[\d０-９一二三四五六七八九十〔]/.test(s) && /(ぐらい|くらい|ほど|程)/.test(s)) warn(`「約」と「ぐらい・ほど」が重なっています:「${cut(s)}」`);
+    if (/ちょうど/.test(s) && /(頃|ごろ)/.test(s)) warn(`「ちょうど」と「頃」が重なっています:「${cut(s)}」`);
+  });
+  // 時刻の言い方の混在(午後3時 と 15時、3:00 p.m. と 15:00)
+  if (/午[前後]\s*\d{1,2}時/.test(zen2han(all.ja)) && /(^|[^午前後\d])(1[3-9]|2[0-3])時(?!間)/.test(zen2han(all.ja))) warn('日本語で時刻の言い方(「午後3時」と「15時」)が混ざっています');
+  if (/\b\d{1,2}(:\d{2})?\s?[ap]\.m\./i.test(all.en) && /\b(1[3-9]|2[0-3]):\d{2}\b/.test(all.en)) warn('英語で時刻の言い方(3:00 p.m. と 15:00)が混ざっています');
+  // 手直しで数字を変えたのに、もう一方の言語の数字がそのまま
+  ['ja', 'en'].forEach(l => {
+    if (!edited[l]) return;
+    const o = l === 'ja' ? 'en' : 'ja', now = nums(all[l]), was = nums(toText(gen[l]));
+    const added = numDiff(now, was), removed = numDiff(was, now);
+    if (!added.length && !removed.length) return;
+    const oNow = nums(all[o]), oWas = nums(toText(gen[o]));
+    if (!numDiff(oNow, oWas).length && !numDiff(oWas, oNow).length) warn(`${LANG_NAME[l]}の数字を変えました(${removed.join('・') || 'なし'} → ${added.join('・') || 'なし'})。${LANG_NAME[o]}も合っていますか?`);
+  });
+  // 未入力(〇〇)。冒頭(便名・機長名)は毎回なので数えない
+  const body = l => P2[l].slice(P2[l][0] && P2[l][0] === open[l] ? 1 : 0).join('\n');
+  const bj = blankCount(body('ja')), be = blankCount(body('en'));
+  if (bj || be) info(`本文に未入力(〇〇)が${[bj && `日本語${bj}か所`, be && `英語${be}か所`].filter(Boolean).join('・')}あります。読むときに補ってください`);
+  // 長さ(1分を超えるもの)
+  const sj = all.ja.replace(/\s/g, '').length / 5, se = all.en.split(/\s+/).filter(Boolean).length / 2.4;
+  if (sj > 60) info(`日本語が約${Math.round(sj / 5) * 5}秒と長めです`);
+  if (se > 60) info(`英語が約${Math.round(se / 5) * 5}秒と長めです`);
+  // 片方の言語が空
+  if (all.ja.trim() && !all.en.trim()) info('英語の文がありません');
+  if (all.en.trim() && !all.ja.trim()) info('日本語の文がありません');
+  return out;
 }
 
 /* ---------- 表示用の変換 ---------- */

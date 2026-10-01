@@ -3,6 +3,8 @@
    ⟦…⟧ … 未入力の項目(黄色で表示)
    ⁅新¦原文⁆ … ハンドブックの文例から直した/足した箇所(点線の下線で表示)
    ===================================================================== */
+// バージョン(build.sh が VERSION ファイルの値に置き換える)
+const APP_VERSION = '__APP_VERSION__', APP_DATE = '__APP_DATE__';
 const P = s => `⟦${s}⟧`;
 const FX = (neu, orig = '') => `⁅${neu}¦${orig}⁆`;
 const has = x => x !== undefined && x !== null && String(x).trim() !== '';
